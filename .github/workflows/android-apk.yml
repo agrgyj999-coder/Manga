@@ -36,12 +36,67 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
+
           perm = '<uses-permission android:name="android.permission.INTERNET"/>'
+
           if perm not in s:
               s = s.replace('<application', perm + '\n    <application', 1)
+
           p.write_text(s)
+          PY
+
+      - name: Add missing ML Kit language dependencies
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          files = [
+              Path('android/app/build.gradle.kts'),
+              Path('android/app/build.gradle')
+          ]
+
+          gradle_file = next((p for p in files if p.exists()), None)
+
+          if gradle_file is None:
+              raise SystemExit('Android app Gradle file not found')
+
+          dependencies = [
+              'com.google.mlkit:text-recognition-chinese:16.0.1',
+              'com.google.mlkit:text-recognition-devanagari:16.0.1',
+              'com.google.mlkit:text-recognition-japanese:16.0.1',
+              'com.google.mlkit:text-recognition-korean:16.0.1'
+          ]
+
+          content = gradle_file.read_text()
+
+          if gradle_file.name.endswith('.kts'):
+              lines = [
+                  f'    implementation("{dep}")'
+                  for dep in dependencies
+              ]
+          else:
+              lines = [
+                  f"    implementation '{dep}'"
+                  for dep in dependencies
+              ]
+
+          additions = '\n'.join(lines)
+
+          if 'dependencies {' in content:
+              content = content.replace(
+                  'dependencies {',
+                  'dependencies {\n' + additions,
+                  1
+              )
+          else:
+              content += '\n\ndependencies {\n' + additions + '\n}\n'
+
+          gradle_file.write_text(content)
+          print('Added ML Kit language dependencies.')
           PY
 
       - run: flutter pub get
@@ -53,7 +108,7 @@ jobs:
         run: flutter analyze
 
       - name: Build release APK
-        run: flutter build apk --release --no-shrink
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
