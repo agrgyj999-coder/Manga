@@ -49,11 +49,14 @@ jobs:
       - name: Remove default Flutter tests
         run: rm -rf test
 
-      - run: flutter analyze
+      - name: Analyze Flutter project
+        run: flutter analyze
 
-      - run: flutter build apk --release
+      - name: Build release APK
+        run: flutter build apk --release --no-shrink
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: MangaTranslate-APK
           path: build/app/outputs/flutter-apk/app-release.apk
