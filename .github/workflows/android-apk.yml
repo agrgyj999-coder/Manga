@@ -1,42 +1,58 @@
+
 name: Build MangaTranslate APK
+
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
+
 permissions:
   contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
       - name: Generate Android project files
         run: |
           cp lib/main.dart /tmp/manga_main.dart
           flutter create --platforms=android --org com.mangatranslate .
           cp /tmp/manga_main.dart lib/main.dart
+
       - name: Add internet permission
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('android/app/src/main/AndroidManifest.xml')
-          s=p.read_text()
-          perm='<uses-permission android:name="android.permission.INTERNET"/>'
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          perm = '<uses-permission android:name="android.permission.INTERNET"/>'
           if perm not in s:
-              s=s.replace('<application',perm+'\n    <application',1)
+              s = s.replace('<application', perm + '\n    <application', 1)
           p.write_text(s)
           PY
+
       - run: flutter pub get
+
+      - name: Remove default Flutter tests
+        run: rm -rf test
+
       - run: flutter analyze
+
       - run: flutter build apk --release
+
       - uses: actions/upload-artifact@v4
         with:
           name: MangaTranslate-APK
